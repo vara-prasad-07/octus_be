@@ -4,6 +4,10 @@ import base64
 import io
 import json
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # The client gets the API key from the environment variable `GEMINI_API_KEY`.
 api_key = os.getenv("GEMINI_API_KEY","")

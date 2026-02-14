@@ -8,6 +8,8 @@ import os
 from PIL import Image
 import io
 from llm import LLMS
+from models import PlanningRequest, PlanningResponse
+from planning_service import PlanningService
 
 app = FastAPI()
 
@@ -26,6 +28,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Initialize LLM service
 llm_service = LLMS()
+
+# Initialize Planning service
+planning_service = PlanningService()
 
 @app.get('/')
 def start():
@@ -110,6 +115,52 @@ async def ui_comparison(
         raise HTTPException(
             status_code=500,
             detail=f"Error processing UI comparison: {str(e)}"
+        )
+
+@app.post('/planning/analyze', response_model=PlanningResponse)
+async def analyze_planning(request: PlanningRequest):
+    """
+    AI-Powered Planning Analysis endpoint.
+    
+    Analyzes project tasks and provides:
+    - Risk scoring per task
+    - Velocity calculations
+    - Workload analysis
+    - Dependency risk propagation
+    - Predicted release delays
+    - AI-generated recommendations
+    - Executive health summary
+    
+    Returns comprehensive planning analysis.
+    """
+    try:
+        # Validate input
+        if not request.tasks:
+            raise HTTPException(
+                status_code=400,
+                detail="No tasks provided for analysis"
+            )
+        
+        print(f"Received analysis request for project: {request.projectId}")
+        print(f"Number of tasks: {len(request.tasks)}")
+        print(f"Team capacity members: {len(request.team_capacity)}")
+        
+        # Perform planning analysis
+        analysis_result = planning_service.analyze_planning(request)
+        
+        print(f"Analysis complete. Overall risk: {analysis_result.overall_risk_score}")
+        
+        return analysis_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in planning analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error performing planning analysis: {str(e)}"
         )
 
 if __name__ == "__main__":
