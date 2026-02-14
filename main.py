@@ -8,6 +8,8 @@ import os
 from PIL import Image
 import io
 from llm import LLMS
+from models import PlanningRequest, PlanningResponse
+from planning_service import PlanningService
 
 app = FastAPI()
 
@@ -26,6 +28,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Initialize LLM service
 llm_service = LLMS()
+
+# Initialize Planning service
+planning_service = PlanningService()
 
 @app.get('/')
 def start():
@@ -111,6 +116,7 @@ async def ui_comparison(
             status_code=500,
             detail=f"Error processing UI comparison: {str(e)}"
         )
+
 @app.post("/validateux")
 async def validate_ux(request: dict):
     """
@@ -172,7 +178,18 @@ async def validate_ux(request: dict):
         # Perform UX flow validation using Gemini Vision
         validation_report = llm_service.validate_ux_flow(sorted_images, total_count)
         
-        return JSONResponse(validation_report)
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": "UX flow validation completed",
+                "validation_report": validation_report,
+                "metadata": {
+                    "total_screens": total_count,
+                    "screens_analyzed": len(sorted_images)
+                }
+            },
+            status_code=200
+        )
         
     except HTTPException:
         raise
@@ -184,7 +201,123 @@ async def validate_ux(request: dict):
             status_code=500,
             detail=f"Error processing UX validation: {str(e)}"
         )
+
+
+@app.post("/visualregressions")
+async def visual_regressions(request: dict):
+    """
+    Visual Regression Detection endpoint.
     
+    Analyzes a single UI screenshot to detect visual regressions, broken components,
+    overlapping elements, and other UI issues.
+    
+    Expected JSON format:
+    {
+        "image": "data:image/png;base64,...",
+        "context": "Optional description of what this screen should look like"
+    }
+    
+    Returns structured inspection report with detected issues.
+    """
+    try:
+        print("[DEBUG] Received request to /visualregressions endpoint")
+        print(f"[DEBUG] Request keys: {list(request.keys())}")
+        
+        # Validate request structure
+        if "image" not in request:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid request format. Expected 'image' field with base64 encoded image."
+            )
+        
+        image_data = request.get("image")
+        context = request.get("context", "")
+        
+        if not image_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Image data is empty"
+            )
+        
+        print("[DEBUG] Calling visual regression analysis")
+        
+        # Perform visual regression analysis using Gemini Vision
+        inspection_report = llm_service.analyze_visual_regressions(image_data, context)
+        
+        print("[DEBUG] Visual regression analysis completed successfully")
+        
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": "Visual regression analysis completed",
+                "inspection_report": inspection_report,
+                "metadata": {
+                    "has_context": bool(context),
+                    "analysis_timestamp": json.dumps({"timestamp": "now"})
+                }
+            },
+            status_code=200
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] visual_regressions endpoint failed: {str(e)}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing visual regression analysis: {str(e)}"
+        )
+
+
+@app.post('/planning/analyze', response_model=PlanningResponse)
+async def analyze_planning(request: PlanningRequest):
+    """
+    AI-Powered Planning Analysis endpoint.
+    
+    Analyzes project tasks and provides:
+    - Risk scoring per task
+    - Velocity calculations
+    - Workload analysis
+    - Dependency risk propagation
+    - Predicted release delays
+    - AI-generated recommendations
+    - Executive health summary
+    
+    Returns comprehensive planning analysis.
+    """
+    try:
+        # Validate input
+        if not request.tasks:
+            raise HTTPException(
+                status_code=400,
+                detail="No tasks provided for analysis"
+            )
+        
+        print(f"Received analysis request for project: {request.projectId}")
+        print(f"Number of tasks: {len(request.tasks)}")
+        print(f"Team capacity members: {len(request.team_capacity)}")
+        
+        # Perform planning analysis
+        analysis_result = planning_service.analyze_planning(request)
+        
+        print(f"Analysis complete. Overall risk: {analysis_result.overall_risk_score}")
+        
+        return analysis_result
+
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in planning analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error performing planning analysis: {str(e)}"
+        )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)

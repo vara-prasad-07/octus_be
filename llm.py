@@ -440,6 +440,287 @@ Analyze all {total_count} screens carefully in the order provided and give a com
                 }
             }
     
+    def analyze_visual_regressions(self, image_data, context=""):
+        """
+        Analyze a single UI screenshot for visual regressions and UI issues.
+        
+        Args:
+            image_data: Base64 encoded image string
+            context: Optional description of what the screen should look like
+            
+        Returns:
+            Structured JSON inspection report
+        """
+        try:
+            print("[DEBUG] Starting visual regression analysis")
+            
+            # Process the image
+            try:
+                img = self._process_image(image_data)
+                print(f"[DEBUG] Image processed successfully, size: {img.size}")
+            except Exception as e:
+                print(f"[ERROR] Failed to process image: {str(e)}")
+                raise Exception(f"Image processing failed: {str(e)}")
+            
+            # Build the visual regression prompt
+            print("[DEBUG] Building visual regression prompt")
+            prompt = self._build_visual_regression_prompt(context)
+            
+            # Call Gemini Vision
+            print("[DEBUG] Calling Gemini Vision API")
+            try:
+                response = client.models.generate_content(
+                    model=self.vision_model,
+                    contents=[prompt, img]
+                )
+                print("[DEBUG] Successfully received response from Gemini Vision API")
+                print(f"[DEBUG] Response text length: {len(response.text)} characters")
+            except Exception as e:
+                print(f"[ERROR] Gemini API call failed: {str(e)}")
+                raise Exception(f"Gemini Vision API error: {str(e)}")
+            
+            # Parse and structure the response
+            print("[DEBUG] Parsing visual regression response")
+            inspection_report = self._parse_visual_regression_response(response.text)
+            print("[DEBUG] Visual regression report parsed successfully")
+            
+            return inspection_report
+            
+        except Exception as e:
+            print(f"[ERROR] analyze_visual_regressions failed: {str(e)}")
+            import traceback
+            print(f"[ERROR] Traceback: {traceback.format_exc()}")
+            raise
+    
+    def _build_visual_regression_prompt(self, context):
+        """Build the prompt for visual regression analysis."""
+        prompt = f"""You are a UI/UX Quality Assurance expert performing a comprehensive visual inspection of a user interface screenshot.
+
+**Context**: {context if context else "General UI inspection - no specific context provided"}
+
+**Task**: Perform a thorough visual regression analysis to detect any UI issues, broken components, overlapping elements, and other visual problems.
+
+**Inspection Checklist**:
+1. **Broken Components**: Identify any UI elements that appear broken, cut off, or improperly rendered
+2. **Overlapping Elements**: Detect components that overlap inappropriately or obscure other elements
+3. **Layout Issues**: Find misaligned elements, incorrect spacing, or broken grid layouts
+4. **Text Issues**: Identify truncated text, text overflow, unreadable text, or font rendering problems
+5. **Image Issues**: Detect broken images, missing images, or improperly sized images
+6. **Color & Contrast**: Find color contrast issues, accessibility problems, or inconsistent theming
+7. **Responsive Issues**: Identify elements that appear to be incorrectly sized for the viewport
+8. **Visual Hierarchy**: Detect problems with visual hierarchy or information architecture
+9. **Interactive Elements**: Check if buttons, links, and interactive elements are properly visible and accessible
+10. **Consistency**: Identify inconsistencies in design patterns, spacing, or styling
+
+**Output Format** (strict JSON):
+{{
+  "overall_health": {{
+    "status": "healthy|warning|critical",
+    "health_score": <number 0-100>,
+    "total_issues_found": <number>,
+    "critical_issues": <number>,
+    "summary": "<brief overall assessment>"
+  }},
+  "broken_components": [
+    {{
+      "component_type": "<type of component: button, input, card, etc>",
+      "component_name": "<identifier or description>",
+      "issue_description": "<detailed description of what's broken>",
+      "severity": "critical|high|medium|low",
+      "location": {{"x": <number>, "y": <number>, "width": <number>, "height": <number>}},
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "overlapping_elements": [
+    {{
+      "element1": "<first overlapping element>",
+      "element2": "<second overlapping element>",
+      "overlap_description": "<description of the overlap>",
+      "severity": "critical|high|medium|low",
+      "location": {{"x": <number>, "y": <number>}},
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "layout_issues": [
+    {{
+      "issue_type": "misalignment|spacing|grid_broken|positioning",
+      "affected_elements": ["<element 1>", "<element 2>"],
+      "description": "<detailed description>",
+      "severity": "critical|high|medium|low",
+      "location": {{"x": <number>, "y": <number>}},
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "text_issues": [
+    {{
+      "issue_type": "truncated|overflow|unreadable|font_rendering",
+      "text_content": "<the problematic text if visible>",
+      "element": "<element containing the text>",
+      "description": "<detailed description>",
+      "severity": "critical|high|medium|low",
+      "location": {{"x": <number>, "y": <number>}},
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "image_issues": [
+    {{
+      "issue_type": "broken|missing|incorrect_size|distorted",
+      "image_description": "<description of the image>",
+      "description": "<detailed description of the issue>",
+      "severity": "critical|high|medium|low",
+      "location": {{"x": <number>, "y": <number>}},
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "color_contrast_issues": [
+    {{
+      "element": "<affected element>",
+      "issue_type": "low_contrast|accessibility|inconsistent_theme",
+      "description": "<detailed description>",
+      "severity": "critical|high|medium|low",
+      "wcag_compliance": "<pass|fail|warning>",
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "responsive_issues": [
+    {{
+      "element": "<affected element>",
+      "issue_description": "<description of responsive issue>",
+      "severity": "critical|high|medium|low",
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "accessibility_concerns": [
+    {{
+      "concern_type": "contrast|focus_indicator|touch_target|screen_reader",
+      "element": "<affected element>",
+      "description": "<detailed description>",
+      "severity": "critical|high|medium|low",
+      "wcag_guideline": "<relevant WCAG guideline if applicable>",
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "design_inconsistencies": [
+    {{
+      "inconsistency_type": "spacing|colors|fonts|patterns",
+      "elements": ["<element 1>", "<element 2>"],
+      "description": "<detailed description>",
+      "severity": "critical|high|medium|low",
+      "suggested_fix": "<actionable recommendation>"
+    }}
+  ],
+  "positive_findings": [
+    "<positive aspect 1>",
+    "<positive aspect 2>"
+  ],
+  "recommendations": [
+    {{
+      "priority": "critical|high|medium|low",
+      "category": "layout|design|accessibility|performance|consistency",
+      "recommendation": "<detailed actionable recommendation>",
+      "impact": "<expected impact of implementing this recommendation>"
+    }}
+  ]
+}}
+
+**Instructions**:
+- Be thorough and precise in your analysis
+- Provide specific locations (x, y coordinates) where possible
+- Give actionable suggestions for fixing each issue
+- If no issues are found in a category, return an empty array []
+- Focus on actual visual problems, not subjective design preferences
+- Prioritize issues that affect functionality and user experience
+
+Analyze the UI screenshot carefully and provide the comprehensive inspection report in the exact JSON format specified above."""
+        
+        return prompt
+    
+    def _parse_visual_regression_response(self, response_text):
+        """Parse Gemini Vision response for visual regression analysis."""
+        try:
+            # Extract JSON from response (handle markdown code blocks)
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            
+            inspection_report = json.loads(response_text)
+            
+            # Ensure all required fields exist with defaults
+            if "overall_health" not in inspection_report:
+                inspection_report["overall_health"] = {
+                    "status": "unknown",
+                    "health_score": 0,
+                    "total_issues_found": 0,
+                    "critical_issues": 0,
+                    "summary": "Unable to assess"
+                }
+            
+            if "broken_components" not in inspection_report:
+                inspection_report["broken_components"] = []
+            
+            if "overlapping_elements" not in inspection_report:
+                inspection_report["overlapping_elements"] = []
+            
+            if "layout_issues" not in inspection_report:
+                inspection_report["layout_issues"] = []
+            
+            if "text_issues" not in inspection_report:
+                inspection_report["text_issues"] = []
+            
+            if "image_issues" not in inspection_report:
+                inspection_report["image_issues"] = []
+            
+            if "color_contrast_issues" not in inspection_report:
+                inspection_report["color_contrast_issues"] = []
+            
+            if "responsive_issues" not in inspection_report:
+                inspection_report["responsive_issues"] = []
+            
+            if "accessibility_concerns" not in inspection_report:
+                inspection_report["accessibility_concerns"] = []
+            
+            if "design_inconsistencies" not in inspection_report:
+                inspection_report["design_inconsistencies"] = []
+            
+            if "positive_findings" not in inspection_report:
+                inspection_report["positive_findings"] = []
+            
+            if "recommendations" not in inspection_report:
+                inspection_report["recommendations"] = []
+            
+            return inspection_report
+            
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] JSON parsing failed: {str(e)}")
+            # Fallback if JSON parsing fails
+            return {
+                "overall_health": {
+                    "status": "error",
+                    "health_score": 0,
+                    "total_issues_found": 0,
+                    "critical_issues": 0,
+                    "summary": "Failed to parse analysis response"
+                },
+                "error": "JSON parsing failed",
+                "raw_response": response_text[:500],  # First 500 chars for debugging
+                "broken_components": [],
+                "overlapping_elements": [],
+                "layout_issues": [],
+                "text_issues": [],
+                "image_issues": [],
+                "color_contrast_issues": [],
+                "responsive_issues": [],
+                "accessibility_concerns": [],
+                "design_inconsistencies": [],
+                "positive_findings": [],
+                "recommendations": []
+            }
+    
     def nlp(self, prompt):
         """General NLP query using Gemini."""
         response = client.models.generate_content(
