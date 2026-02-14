@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import List, Dict
 import math
+from date_utils import parse_date, days_until_date
 
 class RiskEngine:
     """Core risk calculation engine"""
@@ -17,32 +18,30 @@ class RiskEngine:
     def calculate_deadline_risk(self, due_date: str, current_date: datetime = None) -> int:
         """
         Calculate risk based on deadline proximity.
+        Handles various date formats including Excel serial dates.
         Returns: 0-100 risk score
         """
         if not due_date:
             return 30  # No deadline = moderate risk
         
-        if current_date is None:
-            current_date = datetime.now()
+        # Use our date utility to calculate days until due
+        days_until_due = days_until_date(due_date, current_date)
         
-        try:
-            deadline = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
-            days_until_due = (deadline - current_date).days
-            
-            if days_until_due < 0:
-                return 100  # Overdue = critical
-            elif days_until_due <= 2:
-                return 90  # 2 days or less = very high risk
-            elif days_until_due <= 5:
-                return 70  # 3-5 days = high risk
-            elif days_until_due <= 10:
-                return 50  # 6-10 days = moderate risk
-            elif days_until_due <= 20:
-                return 30  # 11-20 days = low-moderate risk
-            else:
-                return 10  # 20+ days = low risk
-        except:
+        if days_until_due is None:
             return 30  # Invalid date = moderate risk
+        
+        if days_until_due < 0:
+            return 100  # Overdue = critical
+        elif days_until_due <= 2:
+            return 90  # 2 days or less = very high risk
+        elif days_until_due <= 5:
+            return 70  # 3-5 days = high risk
+        elif days_until_due <= 10:
+            return 50  # 6-10 days = moderate risk
+        elif days_until_due <= 20:
+            return 30  # 11-20 days = low-moderate risk
+        else:
+            return 10  # 20+ days = low risk
     
     def calculate_complexity_risk(self, story_points: int) -> int:
         """
