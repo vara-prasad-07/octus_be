@@ -18,7 +18,7 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 class LLMS:
-    def __init__(self, nlp_model_name="gemini-2.5-flash", vision_model_name="gemini-2.5-flash"):
+    def __init__(self, nlp_model_name="gemini-3-pro", vision_model_name="gemini-2.5-flash"):
         self.nlp_model = nlp_model_name
         self.vision_model = vision_model_name
         
