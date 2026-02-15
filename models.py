@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict
 from datetime import datetime, date
+from date_utils import parse_date, validate_date_string
 
 class TaskInput(BaseModel):
     """Task input model for validation"""
@@ -21,14 +22,19 @@ class TaskInput(BaseModel):
     
     @validator('dueDate')
     def validate_date(cls, v):
-        if v and v.strip():
-            try:
-                # Try to parse the date
-                datetime.fromisoformat(v.replace('Z', '+00:00'))
-            except:
-                # If invalid, return None instead of raising error
-                return None
-        return v
+        """Validate and normalize date format, handling Excel serial dates"""
+        if not v:
+            return None
+        
+        # Parse the date using our utility function
+        parsed_date = parse_date(v)
+        
+        if parsed_date:
+            return parsed_date
+        
+        # If parsing failed, return None instead of raising error
+        print(f"Warning: Could not parse date '{v}', setting to None")
+        return None
     
     @validator('storyPoints', pre=True)
     def validate_story_points(cls, v):
