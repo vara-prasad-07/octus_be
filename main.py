@@ -8,7 +8,7 @@ import os
 from PIL import Image
 import io
 from llm import LLMS
-from models import PlanningRequest, PlanningResponse
+from models import PlanningRequest, PlanningResponse, InsightsRequest, InsightsResponse
 from planning_service import PlanningService
 
 app = FastAPI()
@@ -150,6 +150,7 @@ async def validate_ux(request: dict):
         
         images = request.get("images", [])
         total_count = request.get("totalCount", 0)
+        user_prompt = request.get("user_prompt", "")
         
         # Validate image count
         if len(images) != total_count:
@@ -176,7 +177,7 @@ async def validate_ux(request: dict):
                 )
         
         # Perform UX flow validation using Gemini Vision
-        validation_report = llm_service.validate_ux_flow(sorted_images, total_count)
+        validation_report = llm_service.validate_ux_flow(sorted_images, total_count, user_prompt)
         
         return JSONResponse(
             content={
@@ -316,6 +317,64 @@ async def analyze_planning(request: PlanningRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error performing planning analysis: {str(e)}"
+        )
+
+@app.post('/insights')
+async def generate_insights(request: InsightsRequest):
+    """
+    AI-Powered Quality Insights endpoint.
+    
+    Analyzes project quality data and provides:
+    - Defect trends across builds
+    - Quality hotspots by module
+    - Release readiness score (0-100)
+    - Release decision (RELEASE/CAUTION/BLOCK)
+    - Actionable recommendations
+    
+    Expected JSON format:
+    {
+        "testGenerationHistory": {...},
+        "uiValidations": {...},
+        "uxValidations": {...}
+    }
+    
+    Returns comprehensive quality insights.
+    """
+    try:
+        print("[DEBUG] Received insights request")
+        print(f"[DEBUG] Test generation history keys: {list(request.testGenerationHistory.keys())}")
+        print(f"[DEBUG] UI validations keys: {list(request.uiValidations.keys())}")
+        print(f"[DEBUG] UX validations keys: {list(request.uxValidations.keys())}")
+        
+        # Generate insights using LLM
+        insights_report = llm_service.generate_insights(
+            test_generation_history=request.testGenerationHistory,
+            ui_validations=request.uiValidations,
+            ux_validations=request.uxValidations
+        )
+        
+        print(f"[DEBUG] Insights generated successfully")
+        print(f"[DEBUG] Release decision: {insights_report.get('release_readiness', {}).get('decision', 'UNKNOWN')}")
+        print(f"[DEBUG] Release score: {insights_report.get('release_readiness', {}).get('score', 0)}")
+        
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": "Quality insights generated successfully",
+                "insights": insights_report
+            },
+            status_code=200
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] insights endpoint failed: {str(e)}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating insights: {str(e)}"
         )
 
 if __name__ == "__main__":

@@ -9,13 +9,22 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# The client gets the API key from the environment variable `GEMINI_API_KEY`.
-api_key = os.getenv("GEMINI_API_KEY")
+# Get separate API keys for vision and NLP models
+vision_api_key = os.getenv("VISION_GEMINI_API_KEY")
+nlp_api_key = os.getenv("NLP_GEMINI_API_KEY")
 
-if not api_key:
-    raise ValueError("GEMINI_API_KEY not found in environment variables. Please check your .env file.")
+# Validate API keys
+if not vision_api_key:
+    raise ValueError("VISION_GEMINI_API_KEY not found in environment variables. Please check your .env file.")
+    
 
-client = genai.Client(api_key=api_key)
+if not nlp_api_key:
+    raise ValueError("NLP_GEMINI_API_KEY not found in environment variables. Please check your .env file.")
+    
+
+# Create separate clients for vision and NLP
+vision_client = genai.Client(api_key=vision_api_key)
+nlp_client = genai.Client(api_key=nlp_api_key)
 
 class LLMS:
     def __init__(self, nlp_model_name="gemini-3-pro", vision_model_name="gemini-2.5-flash"):
@@ -45,7 +54,7 @@ class LLMS:
         prompt = self._build_comparison_prompt(element_labels, tolerance, test_description)
         
         # Call Gemini Vision with both images
-        response = client.models.generate_content(
+        response = vision_client.models.generate_content(
             model=self.vision_model,
             contents=[prompt, baseline_img, comparison_img]
         )
@@ -186,13 +195,14 @@ Analyze both images carefully and provide the structured JSON response."""
                 "color_contrast_issues": []
             }
     
-    def validate_ux_flow(self, images, total_count):
+    def validate_ux_flow(self, images, total_count, user_prompt=""):
             """
             Validate UX flow across multiple screens using Gemini Vision.
 
             Args:
                 images: List of dicts with 'index' and 'image' (base64) fields
                 total_count: Total number of screens in the flow
+                user_prompt: Optional user-provided prompt to append to system prompt
 
             Returns:
                 Structured JSON validation report
@@ -217,7 +227,7 @@ Analyze both images carefully and provide the structured JSON response."""
 
                 # Build the UX validation prompt
                 print("[DEBUG] Building UX validation prompt")
-                prompt = self._build_ux_validation_prompt(total_count)
+                prompt = self._build_ux_validation_prompt(total_count, user_prompt)
 
                 # Prepare content for Gemini (prompt + all images in order)
                 content = [prompt]
@@ -228,7 +238,7 @@ Analyze both images carefully and provide the structured JSON response."""
 
                 # Call Gemini Vision with all images
                 try:
-                    response = client.models.generate_content(
+                    response = vision_client.models.generate_content(
                         model=self.vision_model,
                         contents=content
                     )
@@ -253,7 +263,7 @@ Analyze both images carefully and provide the structured JSON response."""
                 raise
 
     
-    def _build_ux_validation_prompt(self, total_count):
+    def _build_ux_validation_prompt(self, total_count, user_prompt=""):
         """Build the prompt for UX flow validation."""
         prompt = f"""You are a UX/UI expert analyzing a user flow across {total_count} screens. The images are provided in sequential order (screen 1, screen 2, ..., screen {total_count}).
 
@@ -267,7 +277,13 @@ Analyze both images carefully and provide the structured JSON response."""
 5. **User Journey**: Does the flow make sense from a user perspective?
 6. **Missing Steps**: Are there any obvious missing screens or steps?
 7. **Error States**: Are error states or validation messages visible where needed?
-8. **Accessibility**: Are there any obvious accessibility concerns?
+8. **Accessibility**: Are there any obvious accessibility concerns?"""
+
+        # Append user prompt if provided
+        if user_prompt and user_prompt.strip():
+            prompt += f"\n\n**Additional User Instructions**:\n{user_prompt.strip()}"
+
+        prompt += """
 
 **Output Format** (strict JSON):
 {{
@@ -469,7 +485,7 @@ Analyze all {total_count} screens carefully in the order provided and give a com
             # Call Gemini Vision
             print("[DEBUG] Calling Gemini Vision API")
             try:
-                response = client.models.generate_content(
+                response = vision_client.models.generate_content(
                     model=self.vision_model,
                     contents=[prompt, img]
                 )
@@ -723,9 +739,180 @@ Analyze the UI screenshot carefully and provide the comprehensive inspection rep
     
     def nlp(self, prompt):
         """General NLP query using Gemini."""
-        response = client.models.generate_content(
+        response = nlp_client.models.generate_content(
             model=self.nlp_model,
             contents=[prompt]
         )
         return response.text
+    
+    def generate_insights(self, test_generation_history, ui_validations, ux_validations):
+        """
+        Generate quality insights from project data using Gemini.
+        
+        Args:
+            test_generation_history: JSON data about test generation history
+            ui_validations: JSON data about UI validation results
+            ux_validations: JSON data about UX validation results
+            
+        Returns:
+            Structured JSON insights report
+        """
+        try:
+            print("[DEBUG] Starting insights generation")
+            
+            # Build the insights prompt
+            prompt = self._build_insights_prompt(
+                test_generation_history, 
+                ui_validations, 
+                ux_validations
+            )
+            
+            print("[DEBUG] Calling Gemini API for insights")
+            
+            # Call Gemini NLP
+            response = nlp_client.models.generate_content(
+                model=self.nlp_model,
+                contents=[prompt]
+            )
+            
+            print("[DEBUG] Successfully received response from Gemini API")
+            print(f"[DEBUG] Response text length: {len(response.text)} characters")
+            
+            # Parse and structure the response
+            insights_report = self._parse_insights_response(response.text)
+            print("[DEBUG] Insights report parsed successfully")
+            
+            return insights_report
+            
+        except Exception as e:
+            print(f"[ERROR] generate_insights failed: {str(e)}")
+            import traceback
+            print(f"[ERROR] Traceback: {traceback.format_exc()}")
+            raise
+    
+    def _build_insights_prompt(self, test_generation_history, ui_validations, ux_validations):
+        """Build the prompt for insights generation."""
+        prompt = f"""You are an AI quality analyst.
+
+Using the provided test generation history, UI validation results, and UX validation results, generate a STRICT JSON response that includes:
+
+1. Defect trends across builds (increasing, decreasing, or stable) with a short explanation.
+2. Quality hotspots by module with severity levels (low, medium, high, critical).
+3. A release readiness score between 0 and 100.
+4. A release decision (RELEASE / CAUTION / BLOCK).
+5. A short, human-readable recommendation.
+
+Rules:
+- Output ONLY valid JSON.
+- Do NOT include explanations outside JSON.
+- Use realistic engineering judgment.
+- Assume unresolved critical defects heavily impact release readiness.
+
+**Input Data**:
+
+**Test Generation History**:
+{json.dumps(test_generation_history, indent=2)}
+
+**UI Validations**:
+{json.dumps(ui_validations, indent=2)}
+
+**UX Validations**:
+{json.dumps(ux_validations, indent=2)}
+
+**Required Output Format** (strict JSON):
+{{
+  "defect_trends": {{
+    "trend": "increasing|decreasing|stable",
+    "summary": "<short explanation of defect trends across builds>"
+  }},
+  "hotspots": [
+    {{
+      "module": "<module name>",
+      "defect_count": <number>,
+      "severity": "low|medium|high|critical"
+    }}
+  ],
+  "release_readiness": {{
+    "score": <number 0-100>,
+    "decision": "RELEASE|CAUTION|BLOCK",
+    "reasoning": [
+      "<reason 1>",
+      "<reason 2>",
+      "<reason 3>"
+    ]
+  }},
+  "recommendation": "<short, human-readable recommendation for the team>"
+}}
+
+**Analysis Guidelines**:
+- Analyze defect trends: Look for patterns in visual defects, test failures, and validation issues across builds
+- Identify hotspots: Group defects by module/component and assess severity based on the data
+- Calculate release readiness: Consider test pass rates, critical defects, UI/UX validation results
+- Make release decision: RELEASE (score 80+), CAUTION (score 50-79), BLOCK (score <50)
+- Provide actionable recommendation: Focus on critical issues that need immediate attention
+
+**Important**: Extract module names, defect counts, and severity levels from the actual data provided. Look for:
+- Test generation history: test results, pass/fail rates, test coverage
+- UI validations: visual regressions, broken components, layout issues, severity levels
+- UX validations: flow issues, usability problems, screen-by-screen analysis
+
+Analyze the data carefully and provide the comprehensive insights report in the exact JSON format specified above."""
+        
+        return prompt
+    
+    def _parse_insights_response(self, response_text):
+        """Parse Gemini response for insights generation."""
+        try:
+            # Extract JSON from response (handle markdown code blocks)
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            
+            insights_report = json.loads(response_text)
+            
+            # Ensure all required fields exist with defaults
+            if "defect_trends" not in insights_report:
+                insights_report["defect_trends"] = {
+                    "trend": "stable",
+                    "summary": "Unable to determine defect trends"
+                }
+            
+            if "hotspots" not in insights_report:
+                insights_report["hotspots"] = []
+            
+            if "release_readiness" not in insights_report:
+                insights_report["release_readiness"] = {
+                    "score": 50,
+                    "decision": "CAUTION",
+                    "reasoning": ["Unable to assess release readiness"]
+                }
+            
+            if "recommendation" not in insights_report:
+                insights_report["recommendation"] = "Review data quality and re-run analysis"
+            
+            return insights_report
+            
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] JSON parsing failed: {str(e)}")
+            # Fallback if JSON parsing fails
+            return {
+                "defect_trends": {
+                    "trend": "stable",
+                    "summary": "Failed to parse insights response"
+                },
+                "hotspots": [],
+                "release_readiness": {
+                    "score": 0,
+                    "decision": "BLOCK",
+                    "reasoning": ["Analysis failed - unable to parse response"]
+                },
+                "recommendation": "Re-run analysis with valid data",
+                "error": "JSON parsing failed",
+                "raw_response": response_text[:500]
+            }
     

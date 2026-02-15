@@ -1,0 +1,275 @@
+{
+  "testGenerationHistory": {
+    "total_tests_generated": 150,
+    "test_runs": [
+      {
+        "run_id": "run_001",
+        "timestamp": "2024-01-15T10:00:00Z",
+        "build_version": "v1.0.1",
+        "total_tests": 150,
+        "passed": 120,
+        "failed": 30,
+        "skipped": 0,
+        "pass_rate": 80,
+        "duration_seconds": 450
+      },
+      {
+        "run_id": "run_002",
+        "timestamp": "2024-01-16T10:00:00Z",
+        "build_version": "v1.0.2",
+        "total_tests": 150,
+        "passed": 110,
+        "failed": 40,
+        "skipped": 0,
+        "pass_rate": 73,
+        "duration_seconds": 480
+      },
+      {
+        "run_id": "run_003",
+        "timestamp": "2024-01-17T10:00:00Z",
+        "build_version": "v1.0.3",
+        "total_tests": 150,
+        "passed": 105,
+        "failed": 45,
+        "skipped": 0,
+        "pass_rate": 70,
+        "duration_seconds": 510
+      }
+    ],
+    "critical_failures": 8,
+    "test_coverage": 85,
+    "code_coverage_percentage": 78,
+    "flaky_tests": 5
+  },
+  "uiValidations": {
+    "total_validations": 25,
+    "timestamp": "2024-01-17T11:00:00Z",
+    "validations": [
+      {
+        "validation_id": "ui_001",
+        "module": "Checkout",
+        "component": "CheckoutForm",
+        "status": "failed",
+        "severity": "critical",
+        "issues_found": 9,
+        "broken_components": 3,
+        "layout_issues": 4,
+        "color_contrast_issues": 2,
+        "text_issues": 0,
+        "image_issues": 0,
+        "details": {
+          "critical_issues": [
+            "Submit button overlaps with terms checkbox",
+            "Payment form fields cut off on mobile",
+            "Total price not visible on small screens"
+          ],
+          "high_issues": [
+            "Inconsistent spacing between form fields",
+            "Color contrast fails WCAG AA for error messages"
+          ]
+        }
+      },
+      {
+        "validation_id": "ui_002",
+        "module": "Payment",
+        "component": "PaymentGateway",
+        "status": "failed",
+        "severity": "high",
+        "issues_found": 6,
+        "broken_components": 2,
+        "layout_issues": 3,
+        "color_contrast_issues": 1,
+        "text_issues": 0,
+        "image_issues": 0,
+        "details": {
+          "critical_issues": [],
+          "high_issues": [
+            "Card number input field misaligned",
+            "CVV tooltip not visible",
+            "Payment button disabled state unclear"
+          ]
+        }
+      },
+      {
+        "validation_id": "ui_003",
+        "module": "Login",
+        "component": "LoginForm",
+        "status": "passed",
+        "severity": "low",
+        "issues_found": 1,
+        "broken_components": 0,
+        "layout_issues": 1,
+        "color_contrast_issues": 0,
+        "text_issues": 0,
+        "image_issues": 0,
+        "details": {
+          "critical_issues": [],
+          "high_issues": [],
+          "low_issues": [
+            "Forgot password link slightly misaligned"
+          ]
+        }
+      },
+      {
+        "validation_id": "ui_004",
+        "module": "ProductListing",
+        "component": "ProductCard",
+        "status": "passed",
+        "severity": "low",
+        "issues_found": 0,
+        "broken_components": 0,
+        "layout_issues": 0,
+        "color_contrast_issues": 0,
+        "text_issues": 0,
+        "image_issues": 0
+      }
+    ],
+    "overall_health": {
+      "status": "critical",
+      "health_score": 52,
+      "total_issues_found": 16,
+      "critical_issues": 5,
+      "high_issues": 8,
+      "medium_issues": 2,
+      "low_issues": 1
+    }
+  },
+  "uxValidations": {
+    "total_flows_validated": 5,
+    "timestamp": "2024-01-17T12:00:00Z",
+    "flows": [
+      {
+        "flow_id": "ux_001",
+        "flow_name": "Checkout Flow",
+        "screens_analyzed": 5,
+        "is_flow_correct": false,
+        "flow_quality_score": 45,
+        "user_journey_assessment": {
+          "clarity": 50,
+          "ease_of_use": 40,
+          "completion_likelihood": 45
+        },
+        "issues": [
+          {
+            "screen_index": 4,
+            "type": "missing_field",
+            "severity": "critical",
+            "description": "Payment confirmation message missing on final screen",
+            "impact": "Users don't know if payment succeeded"
+          },
+          {
+            "screen_index": 2,
+            "type": "navigation_issue",
+            "severity": "high",
+            "description": "Back button inconsistent - sometimes goes to cart, sometimes to previous step",
+            "impact": "Confusing navigation experience"
+          },
+          {
+            "screen_index": 3,
+            "type": "layout_issue",
+            "severity": "medium",
+            "description": "Shipping address form too long, requires excessive scrolling",
+            "impact": "Poor mobile experience"
+          }
+        ],
+        "recommendations": [
+          "Add clear payment confirmation with order number",
+          "Standardize back button behavior across all screens",
+          "Optimize shipping form layout for mobile"
+        ]
+      },
+      {
+        "flow_id": "ux_002",
+        "flow_name": "Login Flow",
+        "screens_analyzed": 3,
+        "is_flow_correct": true,
+        "flow_quality_score": 85,
+        "user_journey_assessment": {
+          "clarity": 90,
+          "ease_of_use": 85,
+          "completion_likelihood": 80
+        },
+        "issues": [],
+        "recommendations": [
+          "Consider adding social login options",
+          "Add password strength indicator"
+        ]
+      },
+      {
+        "flow_id": "ux_003",
+        "flow_name": "Product Search Flow",
+        "screens_analyzed": 4,
+        "is_flow_correct": true,
+        "flow_quality_score": 75,
+        "user_journey_assessment": {
+          "clarity": 80,
+          "ease_of_use": 75,
+          "completion_likelihood": 70
+        },
+        "issues": [
+          {
+            "screen_index": 2,
+            "type": "usability_issue",
+            "severity": "low",
+            "description": "Filter options not immediately visible",
+            "impact": "Users may miss filtering capabilities"
+          }
+        ],
+        "recommendations": [
+          "Make filter options more prominent",
+          "Add search suggestions"
+        ]
+      },
+      {
+        "flow_id": "ux_004",
+        "flow_name": "Cart Management Flow",
+        "screens_analyzed": 3,
+        "is_flow_correct": true,
+        "flow_quality_score": 70,
+        "user_journey_assessment": {
+          "clarity": 75,
+          "ease_of_use": 70,
+          "completion_likelihood": 65
+        },
+        "issues": [
+          {
+            "screen_index": 1,
+            "type": "functionality_issue",
+            "severity": "medium",
+            "description": "Quantity update requires page refresh",
+            "impact": "Slow and frustrating user experience"
+          }
+        ],
+        "recommendations": [
+          "Implement real-time cart updates",
+          "Add visual feedback for quantity changes"
+        ]
+      },
+      {
+        "flow_id": "ux_005",
+        "flow_name": "Account Settings Flow",
+        "screens_analyzed": 4,
+        "is_flow_correct": true,
+        "flow_quality_score": 80,
+        "user_journey_assessment": {
+          "clarity": 85,
+          "ease_of_use": 80,
+          "completion_likelihood": 75
+        },
+        "issues": [],
+        "recommendations": [
+          "Add confirmation dialogs for destructive actions",
+          "Improve password change flow"
+        ]
+      }
+    ],
+    "overall_assessment": {
+      "average_quality_score": 71,
+      "flows_with_issues": 3,
+      "total_critical_issues": 1,
+      "total_high_issues": 1,
+      "total_medium_issues": 2,
+      "total_low_issues": 1
+    }
+  }
+}

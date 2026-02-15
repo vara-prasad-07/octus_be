@@ -102,3 +102,35 @@ class PlanningResponse(BaseModel):
     recommendations: List[Recommendation]
     ai_health_summary: str
     critical_issues: List[str]
+
+class InsightsRequest(BaseModel):
+    """Request model for insights endpoint"""
+    testGenerationHistory: Dict
+    uiValidations: Dict
+    uxValidations: Dict
+
+class DefectTrend(BaseModel):
+    """Defect trend analysis"""
+    trend: str
+    summary: str
+
+class QualityHotspot(BaseModel):
+    """Quality hotspot by module"""
+    module: str
+    defect_count: int
+    severity: str
+
+class ReleaseReadiness(BaseModel):
+    """Release readiness assessment"""
+    score: int
+    decision: str
+    reasoning: List[str]
+
+class InsightsResponse(BaseModel):
+    """Response model for insights endpoint"""
+    defect_trends: DefectTrend
+    hotspots: List[QualityHotspot]
+    release_readiness: ReleaseReadiness
+    recommendation: str
+
+
