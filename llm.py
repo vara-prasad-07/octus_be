@@ -13,18 +13,20 @@ load_dotenv()
 vision_api_key = os.getenv("VISION_GEMINI_API_KEY")
 nlp_api_key = os.getenv("NLP_GEMINI_API_KEY")
 
-# Validate API keys
-if not vision_api_key:
-    raise ValueError("VISION_GEMINI_API_KEY not found in environment variables. Please check your .env file.")
-    
+# Initialize clients as None
+vision_client = None
+nlp_client = None
 
-if not nlp_api_key:
-    raise ValueError("NLP_GEMINI_API_KEY not found in environment variables. Please check your .env file.")
-    
+# Validate and create clients
+if vision_api_key:
+    vision_client = genai.Client(api_key=vision_api_key)
+else:
+    print("WARNING: VISION_GEMINI_API_KEY not found. Vision endpoints will not work.")
 
-# Create separate clients for vision and NLP
-vision_client = genai.Client(api_key=vision_api_key)
-nlp_client = genai.Client(api_key=nlp_api_key)
+if nlp_api_key:
+    nlp_client = genai.Client(api_key=nlp_api_key)
+else:
+    print("WARNING: NLP_GEMINI_API_KEY not found. NLP endpoints will not work.")
 
 class LLMS:
     def __init__(self, nlp_model_name="gemini-3-pro", vision_model_name="gemini-2.5-flash"):
@@ -45,6 +47,10 @@ class LLMS:
         Returns:
             Structured JSON diff report
         """
+        
+        # Check if vision client is available
+        if not vision_client:
+            raise ValueError("VISION_GEMINI_API_KEY not configured. Cannot perform UI comparison.")
         
         # Convert base64 to PIL Image if needed
         baseline_img = self._process_image(baseline_image)

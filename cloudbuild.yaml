@@ -29,9 +29,20 @@ steps:
       - '10'
       - '--timeout'
       - '300'
+      - '--set-env-vars'
+      - 'VISION_GEMINI_API_KEY=$$VISION_GEMINI_API_KEY,NLP_GEMINI_API_KEY=$$NLP_GEMINI_API_KEY'
+    secretEnv: ['VISION_GEMINI_API_KEY', 'NLP_GEMINI_API_KEY']
 
 images:
   - 'gcr.io/$PROJECT_ID/octus-backend:$COMMIT_SHA'
+
+# Configure secrets from Secret Manager
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/vision-gemini-api-key/versions/latest
+    env: 'VISION_GEMINI_API_KEY'
+  - versionName: projects/$PROJECT_ID/secrets/nlp-gemini-api-key/versions/latest
+    env: 'NLP_GEMINI_API_KEY'
 
 options:
   logging: CLOUD_LOGGING_ONLY
